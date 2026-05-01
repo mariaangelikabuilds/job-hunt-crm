@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<style>
+  :root {
+    --bg: #F8F8F6;
+    --surface: #FFFFFF;
+    --ink: #1F1F1F;
+    --ink-muted: #5C5A56;
+    --line: #E5E3DD;
+    --accent: #2D5266;
+    --good: #3D6B47;
+    --bad: #A23B26;
+    --radius: 4px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 24px;
+  }
+
+  h1 { margin: 0 0 4px 0; font-size: 18px; font-weight: 600; }
+  .subtitle { color: var(--ink-muted); font-size: 13px; margin-bottom: 24px; }
+
+  .field { margin-bottom: 18px; }
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin-bottom: 4px;
+  }
+  .help {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+  }
+
+  input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+
+  .actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  button {
+    appearance: none;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  button.secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .status {
+    font-size: 12px;
+    margin-top: 4px;
+    min-height: 16px;
+  }
+  .status.ok { color: var(--good); }
+  .status.bad { color: var(--bad); }
+
+  .saved-indicator {
+    font-size: 11px;
+    color: var(--good);
+    font-weight: 500;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+  <h1>Set up Job CRM</h1>
+  <div class="subtitle">Five fields. Two minutes. The values are stored in Script Properties (encrypted at rest, only readable by this script).</div>
+
+  <form id="onboarding">
+
+    <div class="field">
+      <label for="api_key">Anthropic API key <span id="key-saved" class="saved-indicator"></span></label>
+      <input type="password" id="api_key" autocomplete="off" placeholder="sk-ant-...">
+      <div class="help">Get one at console.anthropic.com. The key is tested with a tiny Haiku call before saving.</div>
+      <div id="key-status" class="status"></div>
+    </div>
+
+    <div class="field">
+      <label for="resume_doc">Master resume Doc</label>
+      <input type="text" id="resume_doc" placeholder="Paste the full URL of your resume Google Doc">
+      <div class="help">Open your master resume in Google Docs, copy the URL, paste here. The script reads the body each call (cached for 6 hours).</div>
+    </div>
+
+    <div class="field">
+      <label for="drive_parent">Drive folder for company sub-folders</label>
+      <input type="text" id="drive_parent" placeholder="Paste the URL of the parent Drive folder">
+      <div class="help">A new sub-folder gets created here per company you apply to. Resume variants and cover letters land in those.</div>
+    </div>
+
+    <div class="field">
+      <label for="gmail_label">Gmail label for application emails</label>
+      <input type="text" id="gmail_label" value="job-apply">
+      <div class="help">Threads with this label get auto-imported every 5 minutes. Will be created if it does not exist.</div>
+    </div>
+
+    <div class="field">
+      <label for="monthly_spend_threshold">Monthly Anthropic spend threshold (USD)</label>
+      <input type="number" id="monthly_spend_threshold" step="1" min="0" value="20">
+      <div class="help">When monthly spend goes over this, the sidebar footer shows an amber indicator.</div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="cancel">Cancel</button>
+      <button type="submit" id="save">Save and finish</button>
+    </div>
+
+    <div id="form-status" class="status" style="margin-top:12px"></div>
+  </form>
+
+  <script>
+    const $ = sel => document.querySelector(sel)
+    let savedKeyExists = false
+
+    function loadState() {
+      google.script.run.withSuccessHandler(state => {
+        savedKeyExists = state.has_api_key
+        if (savedKeyExists) {
+          $('#key-saved').textContent = 'Key already saved (paste a new one to replace)'
+          $('#api_key').placeholder = '(unchanged)'
+        }
+        if (state.resume_doc_id) $('#resume_doc').value = 'https://docs.google.com/document/d/' + state.resume_doc_id + '/edit'
+        if (state.drive_parent_folder_id) $('#drive_parent').value = 'https://drive.google.com/drive/folders/' + state.drive_parent_folder_id
+        if (state.gmail_label) $('#gmail_label').value = state.gmail_label
+        if (state.monthly_spend_threshold) $('#monthly_spend_threshold').value = state.monthly_spend_threshold
+      }).getOnboardingState()
+    }
+
+    $('#cancel').onclick = () => google.script.host.close()
+
+    $('#onboarding').onsubmit = e => {
+      e.preventDefault()
+      const saveBtn = $('#save')
+      saveBtn.disabled = true
+      saveBtn.textContent = 'Working...'
+      $('#form-status').textContent = ''
+      $('#form-status').className = 'status'
+
+      const apiKey = $('#api_key').value.trim()
+      if (!apiKey && !savedKeyExists) {
+        $('#form-status').textContent = 'API key is required.'
+        $('#form-status').className = 'status bad'
+        saveBtn.disabled = false
+        saveBtn.textContent = 'Save and finish'
+        return
+      }
+
+      const resumeDoc = $('#resume_doc').value.trim()
+      const driveParent = $('#drive_parent').value.trim()
+      if (!resumeDoc || !driveParent) {
+        $('#form-status').textContent = 'Resume Doc URL and Drive folder URL are both required.'
+        $('#form-status').className = 'status bad'
+        saveBtn.disabled = false
+        saveBtn.textContent = 'Save and finish'
+        return
+      }
+
+      google.script.run
+        .withSuccessHandler(() => {
+          $('#form-status').textContent = 'Setup complete. Closing...'
+          $('#form-status').className = 'status ok'
+          setTimeout(() => google.script.host.close(), 800)
+        })
+        .withFailureHandler(err => {
+          $('#form-status').textContent = err.message || String(err)
+          $('#form-status').className = 'status bad'
+          saveBtn.disabled = false
+          saveBtn.textContent = 'Save and finish'
+        })
+        .saveOnboarding({
+          api_key: apiKey,
+          resume_doc: resumeDoc,
+          drive_parent: driveParent,
+          gmail_label: $('#gmail_label').value.trim(),
+          monthly_spend_threshold: $('#monthly_spend_threshold').value
+        })
+    }
+
+    document.addEventListener('DOMContentLoaded', loadState)
+  </script>
+</body>
+</html>

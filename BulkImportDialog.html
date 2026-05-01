@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<style>
+  :root {
+    --bg: #F8F8F6;
+    --surface: #FFFFFF;
+    --ink: #1F1F1F;
+    --ink-muted: #5C5A56;
+    --line: #E5E3DD;
+    --accent: #2D5266;
+    --good: #3D6B47;
+    --bad: #A23B26;
+    --radius: 4px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 24px;
+  }
+
+  h1 { margin: 0 0 4px 0; font-size: 16px; font-weight: 600; }
+  .subtitle { color: var(--ink-muted); font-size: 12px; margin-bottom: 16px; }
+
+  textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+    background: var(--surface);
+    color: var(--ink);
+    resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin: 16px 0 6px 0;
+  }
+
+  .check-row {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .check-row input { accent-color: var(--accent); }
+  .check-row label { margin: 0; text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 400; color: var(--ink); }
+
+  .help {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+  }
+  .help code {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  button {
+    appearance: none;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  button.secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .status {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    display: none;
+  }
+  .status.visible { display: block; }
+  .status.ok { background: #EBF1ED; border: 1px solid var(--good); color: var(--good); }
+  .status.bad { background: #F9E9E5; border: 1px solid var(--bad); color: var(--bad); }
+</style>
+</head>
+<body>
+  <h1>Import applications from CSV</h1>
+  <div class="subtitle">Paste CSV with columns in this order. The first row can be headers (auto-detected) or data.</div>
+
+  <div class="help">
+    <code>Company, Role, JD Link, Date Applied, Status, Tags</code>
+  </div>
+
+  <label for="csv-text">CSV</label>
+  <textarea id="csv-text" placeholder="Stripe,Product Design Engineer,https://stripe.com/jobs/...,2026-04-15,Applied,dream-tier
+Linear,Frontend Engineer,https://linear.app/careers/...,2026-04-12,Applied,dream-tier"></textarea>
+
+  <div class="check-row">
+    <input type="checkbox" id="score-after">
+    <label for="score-after">Score each row after import (rate-limited: 3 sec per call, ~1 min per 20 rows)</label>
+  </div>
+
+  <div class="actions">
+    <button class="secondary" id="cancel">Cancel</button>
+    <button id="import">Import</button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <script>
+    const $ = sel => document.querySelector(sel)
+
+    $('#cancel').onclick = () => google.script.host.close()
+
+    $('#import').onclick = () => {
+      const text = $('#csv-text').value.trim()
+      if (!text) {
+        showStatus('Paste CSV first.', false)
+        return
+      }
+      const scoreAfter = $('#score-after').checked
+      const importBtn = $('#import')
+      importBtn.disabled = true
+      importBtn.textContent = scoreAfter ? 'Importing and scoring...' : 'Importing...'
+
+      google.script.run
+        .withSuccessHandler(result => {
+          importBtn.disabled = false
+          importBtn.textContent = 'Import'
+          const lines = [
+            'Imported ' + result.imported + ' application' + (result.imported === 1 ? '' : 's') + '.'
+          ]
+          if (scoreAfter) lines.push('Scored ' + result.scored + '.')
+          if (result.failed > 0) {
+            lines.push(result.failed + ' issue' + (result.failed === 1 ? '' : 's') + ':')
+            for (const e of result.errors) lines.push('  ' + e)
+          }
+          showStatus(lines.join('\n'), result.failed === 0)
+          if (result.imported > 0 && result.failed === 0 && !scoreAfter) {
+            setTimeout(() => google.script.host.close(), 1500)
+          }
+        })
+        .withFailureHandler(err => {
+          importBtn.disabled = false
+          importBtn.textContent = 'Import'
+          showStatus('Import failed: ' + (err.message || err), false)
+        })
+        .bulkImportCsv(text, { scoreAfter: scoreAfter })
+    }
+
+    function showStatus(message, isOk) {
+      const s = $('#status')
+      s.textContent = message
+      s.className = 'status visible ' + (isOk ? 'ok' : 'bad')
+      s.style.whiteSpace = 'pre-wrap'
+    }
+  </script>
+</body>
+</html>

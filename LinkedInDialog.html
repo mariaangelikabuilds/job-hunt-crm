@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<style>
+  :root {
+    --bg: #F8F8F6;
+    --surface: #FFFFFF;
+    --ink: #1F1F1F;
+    --ink-muted: #5C5A56;
+    --line: #E5E3DD;
+    --accent: #2D5266;
+    --good: #3D6B47;
+    --bad: #A23B26;
+    --radius: 4px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 24px;
+  }
+
+  h1 { margin: 0 0 4px 0; font-size: 16px; font-weight: 600; }
+  .subtitle { color: var(--ink-muted); font-size: 12px; margin-bottom: 16px; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+  .tabs button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tabs button.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+
+  textarea, input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  textarea {
+    min-height: 240px;
+    resize: vertical;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin: 12px 0 4px 0;
+  }
+
+  .help {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .help code {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  button.primary, button.secondary {
+    appearance: none;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  button.secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  .status {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    display: none;
+    white-space: pre-wrap;
+  }
+  .status.visible { display: block; }
+  .status.ok { background: #EBF1ED; border: 1px solid var(--good); color: var(--good); }
+  .status.bad { background: #F9E9E5; border: 1px solid var(--bad); color: var(--bad); }
+  .status a { color: var(--accent); }
+</style>
+</head>
+<body>
+  <h1>Generate resume from LinkedIn</h1>
+  <div class="subtitle">LinkedIn blocks bot fetches, so we work around it. Pick whichever path is easiest. Output: a Google Doc you can review, edit, and set as your master resume.</div>
+
+  <div class="tabs">
+    <button data-pane="paste" class="active">Paste text</button>
+    <button data-pane="pdf">Upload PDF</button>
+    <button data-pane="screenshot">Upload screenshots</button>
+  </div>
+
+  <div class="pane active" data-pane="paste">
+    <label for="ln-text">LinkedIn profile text</label>
+    <textarea id="ln-text" placeholder="Open your own LinkedIn profile in a browser, scroll through the whole thing, select all (Ctrl+A or Cmd+A), copy, paste here. Include About, Experience, Education, Skills, Certifications."></textarea>
+    <div class="help">Tip: in your browser, hit Ctrl+A on the profile page, then Ctrl+C, then paste. Some browsers need you to scroll to lazy-load the full Experience section first.</div>
+  </div>
+
+  <div class="pane" data-pane="pdf">
+    <label for="ln-pdf">PDF file URL or ID (Drive)</label>
+    <input type="text" id="ln-pdf" placeholder="Paste the URL of the PDF in Drive, or the file ID">
+    <div class="help">
+      On your own LinkedIn profile, click the "More" button under your headline, then "Save to PDF". Upload the PDF to Drive (or save it from a browser print-to-PDF). Open the file in Drive, copy its URL, paste here.
+    </div>
+  </div>
+
+  <div class="pane" data-pane="screenshot">
+    <label for="ln-screenshots">Screenshot file URLs or IDs (Drive)</label>
+    <textarea id="ln-screenshots" placeholder="Paste up to 6 Drive URLs or file IDs, one per line or comma-separated."></textarea>
+    <div class="help">
+      Take 1-6 screenshots of your own LinkedIn profile (logged in). Upload them to Drive. Paste the file URLs here, one per line. Claude vision reads them and builds the resume.
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="secondary" id="cancel">Cancel</button>
+    <button class="primary" id="generate">Generate resume</button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <script>
+    const $ = sel => document.querySelector(sel)
+    const $$ = sel => Array.from(document.querySelectorAll(sel))
+
+    let activePane = 'paste'
+
+    $$('.tabs button').forEach(btn => {
+      btn.onclick = () => {
+        activePane = btn.dataset.pane
+        $$('.tabs button').forEach(b => b.classList.toggle('active', b === btn))
+        $$('.pane').forEach(p => p.classList.toggle('active', p.dataset.pane === activePane))
+      }
+    })
+
+    $('#cancel').onclick = () => google.script.host.close()
+
+    $('#generate').onclick = () => {
+      const btn = $('#generate')
+      btn.disabled = true
+      btn.textContent = 'Working (this takes 30-60 seconds)...'
+      $('#status').className = 'status'
+      $('#status').textContent = ''
+
+      const onSuccess = result => {
+        btn.disabled = false
+        btn.textContent = 'Generate resume'
+        const lines = ['Resume generated.']
+        lines.push('Open in Drive: ' + result.url)
+        if (result.has_todos) {
+          lines.push('')
+          lines.push('Heads up: the Doc has TODO: markers where Claude could not find content in your input. Review and fill those in before pointing RESUME_DOC_ID at this Doc.')
+        }
+        if (result.cached) lines.push('(Cache hit on the system prompt prefix.)')
+        showStatus(lines.join('\n'), true)
+      }
+
+      const onFailure = err => {
+        btn.disabled = false
+        btn.textContent = 'Generate resume'
+        showStatus(err.message || String(err), false)
+      }
+
+      if (activePane === 'paste') {
+        const text = $('#ln-text').value.trim()
+        if (!text) return onFailure(new Error('Paste your LinkedIn text first.'))
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).generateResumeFromLinkedInText(text)
+      } else if (activePane === 'pdf') {
+        const id = $('#ln-pdf').value.trim()
+        if (!id) return onFailure(new Error('Paste the PDF URL or file ID first.'))
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).generateResumeFromLinkedInPdf(id)
+      } else if (activePane === 'screenshot') {
+        const ids = $('#ln-screenshots').value.trim()
+        if (!ids) return onFailure(new Error('Paste at least one screenshot URL or file ID first.'))
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).generateResumeFromLinkedInScreenshots(ids)
+      }
+    }
+
+    function showStatus(message, isOk) {
+      const s = $('#status')
+      s.textContent = message
+      s.className = 'status visible ' + (isOk ? 'ok' : 'bad')
+    }
+  </script>
+</body>
+</html>

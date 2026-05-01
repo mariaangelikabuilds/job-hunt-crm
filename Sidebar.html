@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<base target="_top">
+<style>
+  :root {
+    --bg: #F8F8F6;
+    --surface: #FFFFFF;
+    --ink: #1F1F1F;
+    --ink-muted: #5C5A56;
+    --line: #E5E3DD;
+    --accent: #2D5266;
+    --accent-hover: #3D6B82;
+    --good: #3D6B47;
+    --warn: #B57F2E;
+    --bad: #A23B26;
+    --neutral: #6B6862;
+    --radius: 4px;
+    --space: 12px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  body { padding: 0 var(--space) var(--space) var(--space); }
+
+  h1, h2, h3, h4 { margin: 0; font-weight: 600; }
+
+  .header {
+    border-bottom: 1px solid var(--line);
+    padding: var(--space) 0 8px 0;
+    margin-bottom: var(--space);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .header .company {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .header .role {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-top: 2px;
+  }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    color: var(--ink-muted);
+    background: var(--surface);
+    margin-top: 6px;
+  }
+  .pill[data-status="Applied"] { color: var(--accent); border-color: var(--accent); }
+  .pill[data-status="Interview Scheduled"] { color: var(--good); border-color: var(--good); }
+  .pill[data-status="Offer"] { color: var(--good); border-color: var(--good); background: #EBF1ED; }
+  .pill[data-status="Rejected"] { color: var(--bad); border-color: var(--bad); }
+
+  .mode-banner {
+    background: #EAF0F2;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px var(--space);
+    border-radius: var(--radius);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: var(--space);
+    text-align: center;
+  }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space);
+    margin-bottom: var(--space);
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+
+  .score-block { text-align: left; }
+  .score-row { display: flex; align-items: baseline; gap: 8px; }
+  .score-number {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-number[data-band="good"] { color: var(--good); }
+  .score-number[data-band="warn"] { color: var(--warn); }
+  .score-number[data-band="bad"]  { color: var(--neutral); }
+  .score-suffix { font-size: 13px; color: var(--ink-muted); }
+  .score-why {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+
+  textarea, input[type="text"], select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 12px;
+    resize: vertical;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  textarea { min-height: 80px; }
+  textarea:focus, input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  button {
+    appearance: none;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.1s ease, border-color 0.1s ease;
+  }
+  button:hover { background: #000; border-color: #000; }
+  button:disabled { background: var(--neutral); border-color: var(--neutral); cursor: not-allowed; }
+  button.secondary {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  button.secondary:hover { border-color: var(--ink); background: var(--bg); }
+  button.full { width: 100%; }
+  button + button { margin-left: 6px; }
+
+  .button-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .button-row > * { flex: 1 1 auto; }
+
+  ul.flags { margin: 0; padding-left: 18px; }
+  ul.flags li { color: var(--bad); margin-bottom: 4px; font-size: 12px; }
+
+  ul.similar-results { list-style: none; margin: 12px 0 0 0; padding: 0; }
+  ul.similar-results li {
+    border-top: 1px solid var(--line);
+    padding: 8px 0;
+  }
+  .similar-row { font-size: 13px; }
+  .similar-row strong { font-weight: 600; }
+  .similar-meta { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+  .similar-results.empty {
+    margin-top: 12px;
+    padding: 8px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+
+  .angle {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.1s ease;
+  }
+  .angle:hover { border-color: var(--accent); }
+  .angle .index {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin-bottom: 4px;
+  }
+  .angle.picked { border-color: var(--accent); background: #EAF0F2; }
+
+  .artifact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+  }
+  .artifact-row:first-child { border-top: 0; }
+  .artifact-row .label {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .artifact-row .meta {
+    font-size: 11px;
+    color: var(--ink-muted);
+  }
+  .artifact-row a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .artifact-row a:hover { text-decoration: underline; }
+
+  .footer {
+    font-size: 11px;
+    color: var(--ink-muted);
+    padding: var(--space) 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .footer .spend { font-variant-numeric: tabular-nums; }
+  .cache-fresh { color: var(--accent); }
+  .cache-hit { color: var(--good); }
+  .footer .over-budget { color: var(--warn); font-weight: 600; }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--line) 25%, #EFEDE7 50%, var(--line) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: var(--radius);
+  }
+  .skeleton.line { height: 12px; margin-bottom: 8px; }
+  .skeleton.line.short { width: 60%; }
+  .skeleton.line.medium { width: 80%; }
+  .skeleton.block { height: 60px; margin-bottom: 8px; }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .empty-state {
+    text-align: left;
+    color: var(--ink-muted);
+    padding: var(--space) 0;
+    font-size: 12px;
+  }
+  .empty-state h3 {
+    color: var(--ink);
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .error {
+    background: #F9E9E5;
+    border: 1px solid var(--bad);
+    color: var(--bad);
+    padding: 8px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    margin-bottom: var(--space);
+  }
+
+  .quick-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  details {
+    margin-bottom: 6px;
+  }
+  details summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--ink-muted);
+    padding: 4px 0;
+    user-select: none;
+  }
+  details[open] summary { color: var(--ink); }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    padding: 2px 6px;
+    border-radius: 100px;
+    color: var(--ink-muted);
+  }
+
+  .checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .checklist li:last-child { border-bottom: 0; }
+  .checklist input[type="checkbox"] {
+    margin: 2px 0 0 0;
+    accent-color: var(--accent);
+    width: auto;
+  }
+  .checklist label.done { color: var(--ink-muted); text-decoration: line-through; }
+
+  .research dl {
+    margin: 0;
+  }
+  .research dt {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .research dd {
+    margin: 0 0 6px 0;
+    font-size: 12px;
+  }
+  .research ul {
+    margin: 4px 0;
+    padding-left: 18px;
+  }
+  .research li {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .unverified {
+    color: var(--warn);
+    font-style: italic;
+  }
+
+  .question-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .question-card .q {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .question-card .a-angle {
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const $ = sel => document.querySelector(sel)
+    let state = {
+      loading: true,
+      error: null,
+      data: null,
+      prep: null,
+      prepLoading: false,
+      similar: null
+    }
+
+    function setState(patch) {
+      state = Object.assign({}, state, patch)
+      render()
+    }
+
+    function load() {
+      setState({ loading: true, error: null, similar: null })
+      google.script.run
+        .withSuccessHandler(data => {
+          setState({ loading: false, data: data, error: null })
+          if (data && data.validRow && data.status === 'Interview Scheduled') {
+            loadPrep(data.row)
+          } else {
+            setState({ prep: null })
+          }
+        })
+        .withFailureHandler(err => setState({ loading: false, error: err.message || String(err) }))
+        .getActiveRowData()
+    }
+
+    function loadPrep(row) {
+      setState({ prepLoading: true })
+      google.script.run
+        .withSuccessHandler(prep => setState({ prep: prep, prepLoading: false }))
+        .withFailureHandler(err => setState({ prep: null, prepLoading: false, error: err.message || String(err) }))
+        .getInterviewPrepData(row)
+    }
+
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return ''
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    }
+
+    function band(score) {
+      if (typeof score !== 'number') return 'bad'
+      if (score >= 60) return 'good'
+      if (score >= 40) return 'warn'
+      return 'bad'
+    }
+
+    function renderHeader(d) {
+      return `
+        <div class="header">
+          <div class="company">${escapeHtml(d.company) || '<em style="color:var(--ink-muted)">No company</em>'}</div>
+          <div class="role">${escapeHtml(d.role) || ''}</div>
+          ${d.status ? `<span class="pill" data-status="${escapeHtml(d.status)}">${escapeHtml(d.status)}</span>` : ''}
+          ${renderTags(d.tags)}
+        </div>
+      `
+    }
+
+    function renderTags(tags) {
+      if (!tags) return ''
+      const list = String(tags).split(',').map(t => t.trim()).filter(Boolean)
+      if (list.length === 0) return ''
+      return `<div class="tag-row">${list.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`
+    }
+
+    function renderScore(d) {
+      const score = d.fit_score
+      if (score === '' || score === null || score === undefined) {
+        return `
+          <section>
+            <div class="section-label">Fit score</div>
+            <div class="empty-state">
+              <h3>Not scored yet</h3>
+              <p>Paste the JD below or fetch from the link, then click Score.</p>
+            </div>
+          </section>
+        `
+      }
+      return `
+        <section class="score-block">
+          <div class="section-label">Fit score</div>
+          <div class="score-row">
+            <span class="score-number" data-band="${band(score)}">${escapeHtml(score)}</span>
+            <span class="score-suffix">/ 100</span>
+          </div>
+          <div class="score-why">${escapeHtml(d.why_score)}</div>
+        </section>
+      `
+    }
+
+    function renderJdEditor(d) {
+      const hasJd = !!d.jd_text
+      return `
+        <section>
+          <div class="section-label">Job description</div>
+          <details ${hasJd ? '' : 'open'}>
+            <summary>${hasJd ? 'JD captured (' + d.jd_text.length + ' chars). Edit or replace.' : 'Paste JD here'}</summary>
+            <textarea id="jd-text" placeholder="Paste the full JD body here">${escapeHtml(d.jd_text)}</textarea>
+          </details>
+          <div class="button-row" style="margin-top:8px">
+            <button id="btn-score" class="full">Score this JD</button>
+            ${d.jd_link ? '<button id="btn-fetch" class="secondary">Fetch from link</button>' : ''}
+          </div>
+        </section>
+      `
+    }
+
+    function renderAngles(d) {
+      const angles = String(d.cover_angles || '').split('\n').filter(Boolean)
+      if (angles.length === 0) return ''
+      const picked = parseInt(d.picked_angle, 10) - 1
+      return `
+        <section>
+          <div class="section-label">Cover angles</div>
+          ${angles.map((a, i) => `
+            <div class="angle ${i === picked ? 'picked' : ''}" data-angle-index="${i}">
+              <div class="index">Angle ${i + 1}${i === picked ? ' (picked)' : ''}</div>
+              <div>${escapeHtml(a)}</div>
+            </div>
+          `).join('')}
+          <div style="font-size:11px;color:var(--ink-muted);margin-top:4px">Click an angle to draft a Gmail email around it.</div>
+        </section>
+      `
+    }
+
+    function renderFlags(d) {
+      const flags = String(d.red_flags || '').split('\n').filter(Boolean)
+      if (flags.length === 0) return ''
+      return `
+        <section>
+          <div class="section-label">Red flags</div>
+          <ul class="flags">${flags.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
+        </section>
+      `
+    }
+
+    function renderArtifacts(d) {
+      const angles = String(d.cover_angles || '').split('\n').filter(Boolean)
+      if (angles.length === 0) return ''
+      const pickedIndex = Math.max(0, parseInt(d.picked_angle, 10) - 1) || 0
+      const angleOptions = angles.map((a, i) =>
+        `<option value="${i}" ${i === pickedIndex ? 'selected' : ''}>Angle ${i + 1}</option>`
+      ).join('')
+
+      return `
+        <section>
+          <div class="section-label">Artifacts</div>
+          <div class="artifact-row">
+            <div>
+              <div class="label">Tailored resume</div>
+              <div class="meta">${d.tailored_resume ? 'Generated' : 'Not generated yet'}</div>
+            </div>
+            <div>
+              ${d.tailored_resume ? `<a href="${escapeHtml(d.tailored_resume)}" target="_blank">Open</a> ` : ''}
+              <button class="secondary" data-artifact="tailor-resume">${d.tailored_resume ? 'Regenerate' : 'Tailor resume'}</button>
+            </div>
+          </div>
+          <div class="artifact-row">
+            <div>
+              <div class="label">Cover letter</div>
+              <div class="meta">${d.cover_letter ? 'Generated' : 'Not generated yet'}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="cover-angle-pick" style="width:auto">${angleOptions}</select>
+              ${d.cover_letter ? `<a href="${escapeHtml(d.cover_letter)}" target="_blank">Open</a>` : ''}
+              <button class="secondary" data-artifact="cover-letter">${d.cover_letter ? 'Redraft' : 'Draft'}</button>
+            </div>
+          </div>
+          <div class="meta" style="margin-top:6px;font-size:11px">Both artifacts are written to the company folder. Always edit before sending.</div>
+        </section>
+      `
+    }
+
+    function renderQuickActions(d) {
+      return `
+        <section>
+          <div class="section-label">Quick actions</div>
+          <div class="quick-grid">
+            ${d.drive_folder ? `<button class="secondary" data-action="open-folder">Open Drive folder</button>` : `<button class="secondary" data-action="create-folder">Create Drive folder</button>`}
+            <button class="secondary" data-action="mark-applied">Mark applied</button>
+            <button class="secondary" data-action="mark-interview">Schedule interview</button>
+            <button class="secondary" data-action="mark-rejected">Mark rejected</button>
+            <button class="secondary" data-action="find-similar">Find similar past applications</button>
+          </div>
+          ${state.similar ? renderSimilarResults(state.similar) : ''}
+        </section>
+      `
+    }
+
+    function renderSimilarResults(result) {
+      if (result.loading) {
+        return `<div class="similar-results"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div>`
+      }
+      if (!result.matches || result.matches.length === 0) {
+        return `<div class="similar-results empty">${escapeHtml(result.message || 'No similar past applications above threshold.')}</div>`
+      }
+      const items = result.matches.map(m => {
+        const pct = Math.round(m.score * 100)
+        return `<li>
+          <div class="similar-row"><strong>${escapeHtml(m.company || '?')}</strong> ${escapeHtml(m.role || '')}</div>
+          <div class="similar-meta">${pct}% match &middot; ${escapeHtml(m.status || '')} &middot; row ${m.row}</div>
+        </li>`
+      }).join('')
+      return `<ul class="similar-results">${items}</ul>`
+    }
+
+    function renderFooter(d) {
+      const spend = typeof d.monthly_spend_usd === 'number' ? '$' + d.monthly_spend_usd.toFixed(4) : '$0'
+      const hit = typeof d.cache_hit_rate === 'number' ? Math.round(d.cache_hit_rate * 100) + '% cache' : ''
+      return `
+        <div class="footer">
+          <span>${d.last_touch ? 'Last touch ' + new Date(d.last_touch).toLocaleDateString() : 'No activity yet'}</span>
+          <span class="spend">${spend} this month${hit ? ' &middot; ' + hit : ''}</span>
+        </div>
+      `
+    }
+
+    function renderInterviewPrep(d) {
+      if (state.prepLoading || !state.prep) {
+        return `
+          <div class="mode-banner">Interview prep mode</div>
+          <section>
+            <div class="skeleton line"></div>
+            <div class="skeleton line short"></div>
+            <div class="skeleton block"></div>
+          </section>
+        `
+      }
+      const p = state.prep
+      const interviewDate = p.next_action ? new Date(p.next_action) : null
+      const dateText = interviewDate && !isNaN(interviewDate.getTime())
+        ? interviewDate.toLocaleString()
+        : 'Set the date in Next Action column'
+
+      return `
+        <div class="mode-banner">Interview prep mode</div>
+
+        <section>
+          <div class="section-label">Interview details</div>
+          <div style="font-size:13px;font-weight:500">${escapeHtml(p.company)} &middot; ${escapeHtml(p.role)}</div>
+          <div style="font-size:12px;color:var(--ink-muted);margin-top:4px">${escapeHtml(dateText)}</div>
+        </section>
+
+        ${renderResearchSection(p)}
+        ${renderQuestionsSection(p)}
+        ${renderChecklistSection(p)}
+        ${renderNotesSection(p)}
+
+        <section>
+          <div class="section-label">Quick actions</div>
+          <div class="quick-grid">
+            <button class="secondary" data-action="mark-interview-done">Interview done</button>
+            <button class="secondary" data-action="back-to-default">Exit prep mode</button>
+          </div>
+        </section>
+      `
+    }
+
+    function renderResearchSection(p) {
+      if (!p.research) {
+        return `
+          <section>
+            <div class="section-label">Company research</div>
+            <p style="font-size:12px;color:var(--ink-muted);margin:0 0 8px 0">Generate a 2-min company brief: snapshot, recent signals, leadership notes, public values, vibe signal.</p>
+            <button class="full" data-prep-action="gen-research">Generate research</button>
+          </section>
+        `
+      }
+      const r = p.research
+      return `
+        <section class="research">
+          <div class="section-label">Company research</div>
+          <dl>
+            <dt>Snapshot</dt>
+            <dd>${escapeHtml(r.snapshot)}</dd>
+
+            <dt>Recent signals</dt>
+            <dd><ul>${r.recent_signals.map(s => `<li class="${s.indexOf('(unverified)') !== -1 ? 'unverified' : ''}">${escapeHtml(s)}</li>`).join('')}</ul></dd>
+
+            ${r.leadership_notes && r.leadership_notes.length ? `
+              <dt>Leadership</dt>
+              <dd><ul>${r.leadership_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></dd>
+            ` : ''}
+
+            ${r.public_values && r.public_values.length ? `
+              <dt>Public values</dt>
+              <dd><ul>${r.public_values.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></dd>
+            ` : ''}
+
+            <dt>Vibe</dt>
+            <dd>${escapeHtml(r.vibe_signal)}</dd>
+          </dl>
+          <button class="secondary full" data-prep-action="gen-research" style="margin-top:8px">Regenerate</button>
+        </section>
+      `
+    }
+
+    function renderQuestionsSection(p) {
+      if (!p.questions) {
+        return `
+          <section>
+            <div class="section-label">Likely questions</div>
+            <p style="font-size:12px;color:var(--ink-muted);margin:0 0 8px 0">Predict 5-7 questions for this role at this company, with an angle for each grounded in your resume.</p>
+            <button class="full" data-prep-action="gen-questions">Generate questions</button>
+          </section>
+        `
+      }
+      const qs = p.questions.questions || []
+      return `
+        <section>
+          <div class="section-label">Likely questions</div>
+          ${qs.map(item => `
+            <div class="question-card">
+              <div class="q">${escapeHtml(item.q)}</div>
+              <div class="a-angle">${escapeHtml(item.angle)}</div>
+            </div>
+          `).join('')}
+          <button class="secondary full" data-prep-action="gen-questions" style="margin-top:4px">Regenerate</button>
+        </section>
+      `
+    }
+
+    function renderChecklistSection(p) {
+      const items = p.checklist_items || []
+      const checked = p.checklist_state || {}
+      return `
+        <section>
+          <div class="section-label">Prep checklist</div>
+          <ul class="checklist">
+            ${items.map(item => `
+              <li>
+                <input type="checkbox" id="chk-${item.key}" data-checklist-key="${item.key}" ${checked[item.key] ? 'checked' : ''}>
+                <label for="chk-${item.key}" class="${checked[item.key] ? 'done' : ''}">${escapeHtml(item.label)}</label>
+              </li>
+            `).join('')}
+          </ul>
+        </section>
+      `
+    }
+
+    function renderNotesSection(p) {
+      return `
+        <section>
+          <div class="section-label">Notes</div>
+          <textarea id="prep-notes" placeholder="Notes on the conversation, names, follow-up questions, etc.">${escapeHtml(p.notes)}</textarea>
+          <button class="secondary" data-prep-action="save-notes" style="margin-top:6px">Save notes</button>
+        </section>
+      `
+    }
+
+    function render() {
+      if (state.loading) {
+        $('#app').innerHTML = `
+          <div class="header">
+            <div class="skeleton line medium"></div>
+            <div class="skeleton line short"></div>
+          </div>
+          <section>
+            <div class="skeleton block"></div>
+          </section>
+          <section>
+            <div class="skeleton line"></div>
+            <div class="skeleton line short"></div>
+          </section>
+        `
+        return
+      }
+      if (state.error) {
+        $('#app').innerHTML = `<div class="error">${escapeHtml(state.error)}</div><button onclick="load()">Try again</button>`
+        return
+      }
+      const d = state.data || {}
+      if (!d.onApplicationsTab) {
+        $('#app').innerHTML = `
+          <div class="empty-state">
+            <h3>Switch to Applications</h3>
+            <p>The sidebar binds to a row on the Applications tab. Click any data row to load it here.</p>
+          </div>
+        `
+        return
+      }
+      if (!d.validRow) {
+        $('#app').innerHTML = `
+          <div class="empty-state">
+            <h3>Pick a row</h3>
+            <p>Click any row below the header to start scoring or drafting.</p>
+          </div>
+        `
+        return
+      }
+
+      if (d.status === 'Interview Scheduled') {
+        $('#app').innerHTML = [
+          renderHeader(d),
+          renderInterviewPrep(d),
+          renderFooter(d)
+        ].join('')
+      } else {
+        $('#app').innerHTML = [
+          renderHeader(d),
+          renderScore(d),
+          renderJdEditor(d),
+          renderAngles(d),
+          renderFlags(d),
+          renderArtifacts(d),
+          renderQuickActions(d),
+          renderFooter(d)
+        ].join('')
+      }
+
+      bindEvents(d)
+    }
+
+    function bindEvents(d) {
+      const scoreBtn = $('#btn-score')
+      if (scoreBtn) {
+        scoreBtn.onclick = () => {
+          const jdText = $('#jd-text') ? $('#jd-text').value : ''
+          scoreBtn.disabled = true
+          scoreBtn.textContent = 'Scoring...'
+          google.script.run
+            .withSuccessHandler(() => load())
+            .withFailureHandler(err => {
+              scoreBtn.disabled = false
+              scoreBtn.textContent = 'Score this JD'
+              alert('Score failed: ' + (err.message || err))
+            })
+            .saveJdAndScore(d.row, jdText)
+        }
+      }
+
+      document.querySelectorAll('.angle').forEach(el => {
+        el.onclick = () => {
+          const i = parseInt(el.dataset.angleIndex, 10)
+          google.script.run
+            .withSuccessHandler(() => alert('Draft saved to Gmail. Open Drafts to review and send.'))
+            .withFailureHandler(err => alert('Draft failed: ' + (err.message || err)))
+            .draftCoverEmail(d.row, i)
+        }
+      })
+
+      document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.onclick = () => {
+          const action = btn.dataset.action
+          if (action === 'back-to-default') {
+            load()
+            return
+          }
+          if (action === 'mark-interview-done') {
+            btn.disabled = true
+            google.script.run
+              .withSuccessHandler(() => load())
+              .withFailureHandler(err => {
+                btn.disabled = false
+                alert('Action failed: ' + (err.message || err))
+              })
+              .runQuickAction(d.row, 'mark-interview-done')
+            return
+          }
+          if (action === 'find-similar') {
+            setState({ similar: { loading: true } })
+            google.script.run
+              .withSuccessHandler(result => {
+                setState({ similar: result })
+              })
+              .withFailureHandler(err => {
+                setState({ similar: { matches: [], message: 'Could not find similar: ' + (err.message || err) } })
+              })
+              .findSimilarForRow(d.row)
+            return
+          }
+          btn.disabled = true
+          google.script.run
+            .withSuccessHandler(() => load())
+            .withFailureHandler(err => {
+              btn.disabled = false
+              alert('Action failed: ' + (err.message || err))
+            })
+            .runQuickAction(d.row, action)
+        }
+      })
+
+      document.querySelectorAll('[data-artifact]').forEach(btn => {
+        btn.onclick = () => {
+          const which = btn.dataset.artifact
+          btn.disabled = true
+          const original = btn.textContent
+          btn.textContent = 'Working...'
+          if (which === 'tailor-resume') {
+            google.script.run
+              .withSuccessHandler(result => {
+                btn.disabled = false
+                btn.textContent = original
+                if (result && result.has_gaps) {
+                  alert('Tailored resume created. Heads up: it includes one or more "GAP:" notes for things the JD asks for that your master resume does not cover. Review the doc and decide.')
+                }
+                load()
+              })
+              .withFailureHandler(err => {
+                btn.disabled = false
+                btn.textContent = original
+                alert('Tailoring failed: ' + (err.message || err))
+              })
+              .tailorResumeForRow(d.row)
+          } else if (which === 'cover-letter') {
+            const angleIndex = parseInt(($('#cover-angle-pick') || {}).value || 0, 10)
+            google.script.run
+              .withSuccessHandler(result => {
+                btn.disabled = false
+                btn.textContent = original
+                if (result && result.needs_verify) {
+                  alert('Cover letter drafted. The opener has a [VERIFY: ...] placeholder where you need to plug in a real specific about the company. Open the doc to fill it in.')
+                }
+                load()
+              })
+              .withFailureHandler(err => {
+                btn.disabled = false
+                btn.textContent = original
+                alert('Cover letter draft failed: ' + (err.message || err))
+              })
+              .draftCoverLetterForRow(d.row, angleIndex)
+          }
+        }
+      })
+
+      document.querySelectorAll('[data-prep-action]').forEach(btn => {
+        btn.onclick = () => {
+          const action = btn.dataset.prepAction
+          btn.disabled = true
+          const original = btn.textContent
+          btn.textContent = 'Working...'
+
+          if (action === 'gen-research') {
+            google.script.run
+              .withSuccessHandler(() => loadPrep(d.row))
+              .withFailureHandler(err => {
+                btn.disabled = false
+                btn.textContent = original
+                alert('Research failed: ' + (err.message || err))
+              })
+              .generateCompanyResearch(d.row)
+          } else if (action === 'gen-questions') {
+            google.script.run
+              .withSuccessHandler(() => loadPrep(d.row))
+              .withFailureHandler(err => {
+                btn.disabled = false
+                btn.textContent = original
+                alert('Questions generation failed: ' + (err.message || err))
+              })
+              .generateLikelyQuestions(d.row)
+          } else if (action === 'save-notes') {
+            const notes = ($('#prep-notes') || {}).value || ''
+            google.script.run
+              .withSuccessHandler(() => {
+                btn.disabled = false
+                btn.textContent = original
+              })
+              .withFailureHandler(err => {
+                btn.disabled = false
+                btn.textContent = original
+                alert('Save failed: ' + (err.message || err))
+              })
+              .saveInterviewNotes(d.row, notes)
+          }
+        }
+      })
+
+      document.querySelectorAll('[data-checklist-key]').forEach(box => {
+        box.onchange = () => {
+          const key = box.dataset.checklistKey
+          const checked = box.checked
+          const label = box.parentElement.querySelector('label')
+          if (label) label.classList.toggle('done', checked)
+          google.script.run
+            .withSuccessHandler(() => {})
+            .withFailureHandler(err => {
+              box.checked = !checked
+              if (label) label.classList.toggle('done', !checked)
+              alert('Save failed: ' + (err.message || err))
+            })
+            .setChecklistItem(d.row, key, checked)
+        }
+      })
+    }
+
+    document.addEventListener('DOMContentLoaded', load)
+    window.addEventListener('focus', load)
+  </script>
+</body>
+</html>
