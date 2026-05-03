@@ -8,6 +8,8 @@
  * When she edits the doc, she runs "Refresh resume cache" from the menu,
  * which clears the snapshot. Next call pays a one-time cache miss; every
  * call after that hits the cache normally.
+ * Note: Resume caching uses Apps Script CacheService, which has a per-item size limit. 
+ * Very large resume documents may fail to cache and should be shortened or handled with chunked caching.
  */
 
 const RESUME_CACHE_KEY = 'resume_body_v1'
