@@ -39,15 +39,17 @@ const SCORING_RUBRIC = [
   'Output JSON only. No prose, no preamble.'
 ].join('\n')
 
+// Anthropic's structured output validator rejects JSON Schema constraint
+// keywords (minimum/maximum/minItems/maxItems). Constraints like the
+// 0-100 fit score range and exactly-3 angles are enforced in the system
+// prompt rubric instead.
 const SCORING_SCHEMA = {
   type: 'object',
   properties: {
-    fit_score: { type: 'integer', minimum: 0, maximum: 100 },
+    fit_score: { type: 'integer' },
     top_3_angles: {
       type: 'array',
-      items: { type: 'string' },
-      minItems: 3,
-      maxItems: 3
+      items: { type: 'string' }
     },
     red_flags: {
       type: 'array',

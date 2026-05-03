@@ -92,11 +92,14 @@ function registerSidebarReady() {
 }
 
 /**
- * Selection-change trigger. Pushes a refresh signal that the sidebar's
- * window focus listener will pick up. Apps Script can't push to an open
- * sidebar directly, so we rely on the focus event to re-pull state.
+ * Reserved hook for selection-change handling. Not currently installed
+ * as a trigger; sidebar refresh is driven by a window.focus listener
+ * because Apps Script cannot push state to an open sidebar.
+ *
+ * To make this a real simple trigger, rename to `onSelectionChange`
+ * (no underscore suffix). Apps Script will then fire it automatically
+ * on every selection change, no programmatic install required.
  */
 function onSelectionChange_(e) {
-  // No-op for now. The sidebar's window.focus listener handles refresh.
-  // Reserved hook for future server-side state syncing.
+  // No-op.
 }

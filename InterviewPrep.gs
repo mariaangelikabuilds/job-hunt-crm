@@ -23,9 +23,7 @@ const COMPANY_RESEARCH_SCHEMA = {
     snapshot: { type: 'string' },
     recent_signals: {
       type: 'array',
-      items: { type: 'string' },
-      minItems: 3,
-      maxItems: 6
+      items: { type: 'string' }
     },
     leadership_notes: {
       type: 'array',
@@ -54,9 +52,7 @@ const LIKELY_QUESTIONS_SCHEMA = {
         },
         required: ['q', 'angle'],
         additionalProperties: false
-      },
-      minItems: 5,
-      maxItems: 7
+      }
     }
   },
   required: ['questions'],

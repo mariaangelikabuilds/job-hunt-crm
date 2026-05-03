@@ -6,7 +6,7 @@
  *
  * - Prompts for ANTHROPIC_API_KEY and RESUME_DOC_ID (Script Properties)
  * - Creates the three sheet tabs (Applications, Analytics, Activity)
- * - Installs time-driven, onEdit, and onSelectionChange triggers
+ * - Installs time-driven and onEdit triggers (selection-change is a simple trigger only; defined in SidebarController.gs if needed)
  * - Seeds the menu via onOpen
  *
  * Re-runnable. Existing triggers are not duplicated. Existing properties are
@@ -208,9 +208,6 @@ function installTriggers_() {
   }
   if (!handlerNames.includes('onStatusEdit_')) {
     ScriptApp.newTrigger('onStatusEdit_').forSpreadsheet(ss).onEdit().create()
-  }
-  if (!handlerNames.includes('onSelectionChange_')) {
-    ScriptApp.newTrigger('onSelectionChange_').forSpreadsheet(ss).onSelectionChange().create()
   }
 }
 
