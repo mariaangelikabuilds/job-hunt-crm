@@ -16,10 +16,6 @@ function doGet(e) {
     .setTitle('Job CRM')
     .setSandboxMode(HtmlService.SandboxMode.IFRAME)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover')
-    .addMetaTag('apple-mobile-web-app-capable', 'yes')
-    .addMetaTag('apple-mobile-web-app-status-bar-style', 'default')
-    .addMetaTag('apple-mobile-web-app-title', 'Job CRM')
-    .addMetaTag('theme-color', '#2D5266')
 }
 
 /**
