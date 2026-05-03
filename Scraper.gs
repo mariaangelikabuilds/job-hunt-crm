@@ -20,6 +20,10 @@ const SCRAPE_MAX_HTML_CHARS = 50000
 
 function scrapeJD_(url, rowRef) {
   if (!url) return null
+  if (!isPublicHttpUrl_(url)) {
+    console.warn('Scrape rejected non-public URL: ' + url)
+    return null
+  }
 
   let response
   try {
@@ -58,6 +62,37 @@ function scrapeJD_(url, rowRef) {
     console.warn('Claude extraction failed for ' + url + ': ' + err.message)
     return null
   }
+}
+
+/**
+ * Reject URLs that target localhost, private IP ranges, or cloud metadata
+ * endpoints. UrlFetchApp runs in Google's sandbox so the practical SSRF
+ * blast radius is small, but rejecting bad input is still the right shape.
+ * Hostnames that resolve to private ranges via DNS slip past this string
+ * check; that's the residual risk and is documented in the security audit.
+ */
+function isPublicHttpUrl_(url) {
+  const s = String(url).trim()
+  if (!/^https?:\/\//i.test(s)) return false
+  let host
+  try {
+    const match = s.match(/^https?:\/\/([^\/?#]+)/i)
+    if (!match) return false
+    host = match[1].split('@').pop().split(':')[0].toLowerCase()
+  } catch (_) {
+    return false
+  }
+  if (!host) return false
+  if (host === 'localhost' || host.endsWith('.localhost')) return false
+  if (host === 'metadata.google.internal' || host === '169.254.169.254') return false
+  if (/^127\./.test(host)) return false
+  if (/^10\./.test(host)) return false
+  if (/^192\.168\./.test(host)) return false
+  if (/^169\.254\./.test(host)) return false
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false
+  if (host === '0.0.0.0') return false
+  if (/^::1$|^\[::1\]$|^\[fc/i.test(host)) return false
+  return true
 }
 
 /**

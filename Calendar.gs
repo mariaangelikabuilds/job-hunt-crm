@@ -31,7 +31,13 @@ function onStatusEdit_(e) {
 
   const eventDate = parseInterviewDate_(nextAction)
   if (!eventDate) {
-    sheet.getRange(row, cols['Notes']).setValue('Set the interview date in Next Action (e.g. "2026-05-12 14:00") so a Calendar event can be created.')
+    const lock = LockService.getDocumentLock()
+    try {
+      lock.waitLock(5000)
+      sheet.getRange(row, cols['Notes']).setValue('Set the interview date in Next Action (e.g. "2026-05-12 14:00") so a Calendar event can be created.')
+    } finally {
+      try { lock.releaseLock() } catch (_) {}
+    }
     return
   }
 

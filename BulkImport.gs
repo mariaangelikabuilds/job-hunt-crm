@@ -20,6 +20,8 @@ function showBulkImportDialog_() {
   SpreadsheetApp.getUi().showModalDialog(html, 'Import applications from CSV')
 }
 
+const MAX_BULK_IMPORT_ROWS = 500
+
 /**
  * Parses CSV text and appends rows. Returns counts and any failures.
  */
@@ -32,6 +34,10 @@ function bulkImportCsv(csvText, options) {
   if (rows.length === 0) return { imported: 0, failed: 0, errors: [] }
 
   if (looksLikeHeaderRow_(rows[0])) rows.shift()
+
+  if (rows.length > MAX_BULK_IMPORT_ROWS) {
+    throw new Error('CSV has ' + rows.length + ' rows. Limit is ' + MAX_BULK_IMPORT_ROWS + '. Split into batches and import each separately.')
+  }
 
   const errors = []
   const importedRowIndices = []

@@ -16,3 +16,5 @@ master-resume-v2.md
 
 .idea/
 .vscode/
+
+.tmp/

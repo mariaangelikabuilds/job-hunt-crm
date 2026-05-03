@@ -65,12 +65,18 @@ function scoreJD_(row) {
     const extracted = scrapeJD_(jdLink, 'scrape:row:' + row)
     if (extracted && extracted.jd_text) {
       effectiveJd = extracted.jd_text
-      sheet.getRange(row, cols['JD Text']).setValue(effectiveJd)
-      if (extracted.company && !rowValues[cols['Company'] - 1]) {
-        sheet.getRange(row, cols['Company']).setValue(extracted.company)
-      }
-      if (extracted.role && !rowValues[cols['Role'] - 1]) {
-        sheet.getRange(row, cols['Role']).setValue(extracted.role)
+      const scrapeLock = LockService.getDocumentLock()
+      try {
+        scrapeLock.waitLock(5000)
+        sheet.getRange(row, cols['JD Text']).setValue(effectiveJd)
+        if (extracted.company && !rowValues[cols['Company'] - 1]) {
+          sheet.getRange(row, cols['Company']).setValue(extracted.company)
+        }
+        if (extracted.role && !rowValues[cols['Role'] - 1]) {
+          sheet.getRange(row, cols['Role']).setValue(extracted.role)
+        }
+      } finally {
+        try { scrapeLock.releaseLock() } catch (_) {}
       }
     }
   }
@@ -79,8 +85,8 @@ function scoreJD_(row) {
     throw new Error('Row ' + row + ' has no JD Text and no scrapable JD Link. Some boards (LinkedIn, Indeed) block bots; paste the JD body directly into the JD Text column.')
   }
 
-  const result = scoreJDViaClaude_(effectiveJd, { rowRef: 'row:' + row })
-  const parsed = result.parsed
+  const scored = scoreJDViaClaude_(effectiveJd, { rowRef: 'row:' + row })
+  const parsed = scored.parsed
 
   const lock = LockService.getDocumentLock()
   try {
@@ -106,8 +112,8 @@ function scoreJD_(row) {
     top_3_angles: parsed.top_3_angles,
     red_flags: parsed.red_flags,
     why_score: parsed.why_score,
-    cached: result.cached,
-    cache_read_tokens: result.usage ? result.usage.cache_read_input_tokens : 0,
+    cached: scored.cached,
+    cache_read_tokens: scored.usage ? scored.usage.cache_read_input_tokens : 0,
     monthly_spend_usd: getMonthlySpendUsd_()
   }
 }
@@ -150,6 +156,7 @@ function getActiveRowData() {
     cover_letter: get('Cover Letter'),
     picked_angle: get('Picked Angle'),
     monthly_spend_usd: getMonthlySpendUsd_(),
+    monthly_spend_threshold_usd: getMonthlySpendThresholdUsd_(),
     cache_hit_rate: getCacheHitRate_()
   }
 }
@@ -162,7 +169,13 @@ function saveJdAndScore(row, jdText) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_APPLICATIONS)
   const cols = getColumnMap_(sheet)
   if (jdText) {
-    sheet.getRange(row, cols['JD Text']).setValue(jdText)
+    const lock = LockService.getDocumentLock()
+    try {
+      lock.waitLock(5000)
+      sheet.getRange(row, cols['JD Text']).setValue(jdText)
+    } finally {
+      try { lock.releaseLock() } catch (_) {}
+    }
   }
   return scoreJD_(row)
 }
@@ -196,8 +209,14 @@ function draftCoverEmail(row, angleIndex) {
   ].join('\n')
 
   const draft = GmailApp.createDraft('', subject, body)
-  sheet.getRange(row, cols['Picked Angle']).setValue(angleIndex + 1)
-  sheet.getRange(row, cols['Last Touch']).setValue(new Date())
+  const lock = LockService.getDocumentLock()
+  try {
+    lock.waitLock(5000)
+    sheet.getRange(row, cols['Picked Angle']).setValue(angleIndex + 1)
+    sheet.getRange(row, cols['Last Touch']).setValue(new Date())
+  } finally {
+    try { lock.releaseLock() } catch (_) {}
+  }
 
   logActivity_({
     action: 'cover_draft',

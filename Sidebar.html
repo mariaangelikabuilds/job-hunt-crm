@@ -188,6 +188,60 @@
     color: var(--ink-muted);
   }
 
+  .diff-panel {
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .diff-summary {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .diff-summary .diff-stat strong { font-weight: 600; }
+  .diff-summary .diff-stat.add strong { color: var(--good); }
+  .diff-summary .diff-stat.del strong { color: var(--bad); }
+  .diff-summary .diff-close { margin-left: auto; }
+  .diff-hint {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+  .diff-hint strong { color: var(--good); font-weight: 600; }
+  .diff-body {
+    max-height: 360px;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .diff-line {
+    display: flex;
+    padding: 2px 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .diff-line .diff-op {
+    flex: 0 0 14px;
+    color: var(--ink-muted);
+    user-select: none;
+  }
+  .diff-line .diff-text { flex: 1; }
+  .diff-line.add { background: rgba(61, 107, 71, 0.08); }
+  .diff-line.add .diff-op { color: var(--good); font-weight: 600; }
+  .diff-line.del { background: rgba(162, 59, 38, 0.06); color: var(--ink-muted); }
+  .diff-line.del .diff-op { color: var(--bad); font-weight: 600; }
+  .diff-line.del .diff-text { text-decoration: line-through; text-decoration-color: rgba(162, 59, 38, 0.4); }
+  .diff-line.same { color: var(--ink-muted); }
+
   .angle {
     background: var(--bg);
     border: 1px solid var(--line);
@@ -399,7 +453,9 @@
       data: null,
       prep: null,
       prepLoading: false,
-      similar: null
+      similar: null,
+      diff: null,
+      diffLoading: false
     }
 
     function setState(patch) {
@@ -408,7 +464,7 @@
     }
 
     function load() {
-      setState({ loading: true, error: null, similar: null })
+      setState({ loading: true, error: null, similar: null, diff: null, diffLoading: false })
       google.script.run
         .withSuccessHandler(data => {
           setState({ loading: false, data: data, error: null })
@@ -554,9 +610,12 @@
             </div>
             <div>
               ${d.tailored_resume ? `<a href="${escapeHtml(d.tailored_resume)}" target="_blank">Open</a> ` : ''}
+              ${d.tailored_resume ? `<button class="secondary" data-artifact="show-diff">Show diff</button> ` : ''}
               <button class="secondary" data-artifact="tailor-resume">${d.tailored_resume ? 'Regenerate' : 'Tailor resume'}</button>
             </div>
           </div>
+          ${state.diffLoading ? renderDiffSkeleton() : ''}
+          ${state.diff ? renderResumeDiff(state.diff) : ''}
           <div class="artifact-row">
             <div>
               <div class="label">Cover letter</div>
@@ -606,13 +665,47 @@
       return `<ul class="similar-results">${items}</ul>`
     }
 
+    function renderDiffSkeleton() {
+      return `<div class="diff-panel">
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line"></div>
+      </div>`
+    }
+
+    function renderResumeDiff(result) {
+      if (!result || !result.diff) return ''
+      const s = result.summary || { added: 0, removed: 0, same: 0 }
+      const lines = result.diff.map(entry => {
+        const cls = entry.op === '+' ? 'add' : entry.op === '-' ? 'del' : 'same'
+        const prefix = entry.op === ' ' ? ' ' : entry.op
+        return `<div class="diff-line ${cls}"><span class="diff-op">${prefix}</span><span class="diff-text">${escapeHtml(entry.line) || ' '}</span></div>`
+      }).join('')
+      return `<div class="diff-panel">
+        <div class="diff-summary">
+          <span class="diff-stat add"><strong>+${s.added}</strong> added</span>
+          <span class="diff-stat del"><strong>-${s.removed}</strong> removed</span>
+          <span class="diff-stat same">${s.same} unchanged</span>
+          <button class="secondary diff-close" data-artifact="hide-diff">Close</button>
+        </div>
+        <div class="diff-hint">Audit the <strong>+</strong> lines. Anything not a pure rephrase is a fabrication risk.</div>
+        <div class="diff-body">${lines}</div>
+      </div>`
+    }
+
     function renderFooter(d) {
-      const spend = typeof d.monthly_spend_usd === 'number' ? '$' + d.monthly_spend_usd.toFixed(4) : '$0'
+      const amount = typeof d.monthly_spend_usd === 'number' ? d.monthly_spend_usd : 0
+      const threshold = typeof d.monthly_spend_threshold_usd === 'number' ? d.monthly_spend_threshold_usd : 20
+      const overBudget = amount > threshold
+      const spend = '$' + amount.toFixed(4)
       const hit = typeof d.cache_hit_rate === 'number' ? Math.round(d.cache_hit_rate * 100) + '% cache' : ''
+      const spendCls = overBudget ? 'spend over-budget' : 'spend'
+      const ofThreshold = overBudget ? ` of $${threshold.toFixed(0)}` : ''
       return `
         <div class="footer">
           <span>${d.last_touch ? 'Last touch ' + new Date(d.last_touch).toLocaleDateString() : 'No activity yet'}</span>
-          <span class="spend">${spend} this month${hit ? ' &middot; ' + hit : ''}</span>
+          <span class="${spendCls}" title="Threshold: $${threshold.toFixed(2)}/mo">${spend} this month${ofThreshold}${hit ? ' &middot; ' + hit : ''}</span>
         </div>
       `
     }
@@ -885,6 +978,23 @@
       document.querySelectorAll('[data-artifact]').forEach(btn => {
         btn.onclick = () => {
           const which = btn.dataset.artifact
+          if (which === 'show-diff') {
+            setState({ diff: null, diffLoading: true })
+            google.script.run
+              .withSuccessHandler(result => {
+                setState({ diff: result, diffLoading: false })
+              })
+              .withFailureHandler(err => {
+                setState({ diffLoading: false })
+                alert('Diff failed: ' + (err.message || err))
+              })
+              .getResumeDiff(d.row)
+            return
+          }
+          if (which === 'hide-diff') {
+            setState({ diff: null, diffLoading: false })
+            return
+          }
           btn.disabled = true
           const original = btn.textContent
           btn.textContent = 'Working...'

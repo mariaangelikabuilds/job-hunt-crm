@@ -35,6 +35,8 @@ const PRICING = {
   }
 }
 
+const ACTIVITY_NOTES_MAX_LENGTH = 500
+
 function logActivity_(entry) {
   const ss = SpreadsheetApp.getActiveSpreadsheet()
   const sheet = ss.getSheetByName(SHEET_ACTIVITY)
@@ -56,7 +58,7 @@ function logActivity_(entry) {
     usage.cache_creation_input_tokens || 0,
     usage.output_tokens || 0,
     cost,
-    entry.notes || ''
+    sanitizeActivityNotes_(entry.notes)
   ]
 
   const lock = LockService.getDocumentLock()
@@ -68,6 +70,21 @@ function logActivity_(entry) {
   } finally {
     try { lock.releaseLock() } catch (_) {}
   }
+}
+
+/**
+ * Notes are written into the Activity audit log. Strip obvious PII patterns
+ * (emails, phone numbers) and cap length so the audit tab doesn't accumulate
+ * long-form JD content that could re-leak if the tab is unhidden or shared.
+ */
+function sanitizeActivityNotes_(raw) {
+  let s = String(raw == null ? '' : raw)
+  s = s.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email]')
+  s = s.replace(/(?:\+?\d[\d\s().-]{7,}\d)/g, '[phone]')
+  if (s.length > ACTIVITY_NOTES_MAX_LENGTH) {
+    s = s.slice(0, ACTIVITY_NOTES_MAX_LENGTH - 3) + '...'
+  }
+  return s
 }
 
 function computeCost_(model, usage) {
@@ -84,19 +101,25 @@ function getMonthlySpendUsd_() {
   const sheet = ss.getSheetByName(SHEET_ACTIVITY)
   if (!sheet || sheet.getLastRow() < 2) return 0
 
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues()
+  const activityRows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues()
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
   let total = 0
-  for (const row of data) {
-    const ts = row[0]
+  for (const row of activityRows) {
+    const timestamp = row[0]
     const cost = row[7]
-    if (ts instanceof Date && ts >= startOfMonth && typeof cost === 'number') {
+    if (timestamp instanceof Date && timestamp >= startOfMonth && typeof cost === 'number') {
       total += cost
     }
   }
   return total
+}
+
+function getMonthlySpendThresholdUsd_() {
+  const raw = PropertiesService.getScriptProperties().getProperty('MONTHLY_SPEND_THRESHOLD_USD')
+  const parsed = parseFloat(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20
 }
 
 function getCacheHitRate_() {
@@ -104,10 +127,10 @@ function getCacheHitRate_() {
   const sheet = ss.getSheetByName(SHEET_ACTIVITY)
   if (!sheet || sheet.getLastRow() < 2) return null
 
-  const data = sheet.getRange(2, 4, sheet.getLastRow() - 1, 2).getValues()
+  const tokenRows = sheet.getRange(2, 4, sheet.getLastRow() - 1, 2).getValues()
   let input = 0
   let cacheRead = 0
-  for (const row of data) {
+  for (const row of tokenRows) {
     input += row[0] || 0
     cacheRead += row[1] || 0
   }

@@ -126,7 +126,13 @@ function storeRowEmbedding_(row) {
   if (!vector) return
 
   const packed = packEmbedding_(vector)
-  sheet.getRange(row, cols['Embedding']).setValue(packed)
+  const lock = LockService.getDocumentLock()
+  try {
+    lock.waitLock(5000)
+    sheet.getRange(row, cols['Embedding']).setValue(packed)
+  } finally {
+    try { lock.releaseLock() } catch (_) {}
+  }
 
   logActivity_({
     action: 'embedding_stored',
@@ -153,14 +159,14 @@ function findSimilarRows_(targetRow, k) {
   const targetEmbedding = unpackEmbedding_(sheet.getRange(targetRow, cols['Embedding']).getValue())
   if (!targetEmbedding) return []
 
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues()
+  const candidateRows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues()
   const matches = []
 
-  for (let i = 0; i < data.length; i++) {
+  for (let i = 0; i < candidateRows.length; i++) {
     const rowIndex = i + 2
     if (rowIndex === targetRow) continue
 
-    const packed = data[i][cols['Embedding'] - 1]
+    const packed = candidateRows[i][cols['Embedding'] - 1]
     if (!packed) continue
 
     const otherEmbedding = unpackEmbedding_(packed)
@@ -171,10 +177,10 @@ function findSimilarRows_(targetRow, k) {
 
     matches.push({
       row: rowIndex,
-      company: data[i][cols['Company'] - 1],
-      role: data[i][cols['Role'] - 1],
-      status: data[i][cols['Status'] - 1],
-      fit_score: data[i][cols['Fit Score'] - 1],
+      company: candidateRows[i][cols['Company'] - 1],
+      role: candidateRows[i][cols['Role'] - 1],
+      status: candidateRows[i][cols['Status'] - 1],
+      fit_score: candidateRows[i][cols['Fit Score'] - 1],
       score: score
     })
   }

@@ -202,11 +202,32 @@ The copy includes the bound script. Each copier authorizes the OAuth scopes them
 - Slack signature verification is not available. Apps Script `doPost(e)` exposes only `e.postData.contents` and `e.parameter`; HTTP headers (including `X-Slack-Signature`) are not surfaced. The script falls back to body-embedded verification token + `team_id` allowlist. Acceptable for personal single-workspace use; not suitable for a shared production deployment.
 - Embedding generation calls OpenAI directly via UrlFetchApp. If you don't set `OPENAI_API_KEY`, scoring still works; the similar-applications feature is the only thing skipped.
 
+## OAuth scopes
+
+The first menu click triggers a Google consent screen for these scopes. Each is required by a specific feature. If you don't need a feature, you could remove the scope from `appsscript.json` before deploying, but the menu items that depend on it will break.
+
+| Scope | Required by |
+|---|---|
+| `spreadsheets` | All sheet reads/writes (every menu item) |
+| `gmail.modify` | Auto-import threads labeled `job-apply` and mark them processed |
+| `gmail.send` | Daily nudge digest emails, cover-letter draft creation |
+| `drive` | Per-company subfolder creation, tailored resume + cover letter Doc creation, master resume Doc reading |
+| `documents` | Reading the master resume Doc body and writing tailored output Docs |
+| `calendar` | Creating interview Calendar events on Status flip |
+| `script.external_request` | Anthropic API + OpenAI embeddings + Slack webhook |
+| `script.scriptapp` | Installing time-driven and onEdit triggers from `setup` |
+| `userinfo.email` | First-run auth flow only (no persistent use) |
+| `script.container.ui` | Sidebar, modals, and prompts inside the Sheet |
+
+The scope list looks broad because the project actually does a lot. A reviewer reading `appsscript.json` will see exactly the scopes the code uses, no more.
+
 ## Privacy
 
 - Sheet data, Drive folders, Activity log all live in my Google account. Nobody else can read them.
 - Each scoring call sends JD text plus the resume body to the Anthropic API. Per the [Anthropic data use policy](https://www.anthropic.com/legal/commercial-terms), API data is not used for training.
 - API key is in Script Properties: encrypted at rest, only readable by code in this script project.
+- The `DRIVE_PARENT_FOLDER_ID` should point at a private folder you own. New per-company subfolders inherit the parent's sharing settings, so anything stored there (cover letters, tailored resumes) inherits whatever access the parent has. Use a folder that's NOT shared with others.
+- The `Activity` tab is hidden by default. Even so, the `notes` column is sanitized before write: emails and phone numbers are redacted, and notes are capped at 500 characters.
 - No third-party logging, no analytics SDK.
 - This public repo excludes my actual API key, script project ID, and resume doc ID.
 

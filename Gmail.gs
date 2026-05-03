@@ -162,14 +162,14 @@ function dailyNudge_() {
   if (!sheet || sheet.getLastRow() < 2) return
 
   const cols = getColumnMap_(sheet)
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues()
+  const applicationRows = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues()
 
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
   const overdue = []
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i]
+  for (let i = 0; i < applicationRows.length; i++) {
+    const row = applicationRows[i]
     const status = row[cols['Status'] - 1]
     const lastTouch = row[cols['Last Touch'] - 1]
     if (status !== 'Applied') continue
